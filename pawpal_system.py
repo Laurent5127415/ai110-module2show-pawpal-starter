@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 
 class Owner:
@@ -18,6 +18,10 @@ class Owner:
     
     def get_all_pets(self) -> List['Pet']:
         """Retrieve all pets owned by this owner."""
+        pass
+    
+    def remove_pet(self, pet: 'Pet') -> None:
+        """Remove a pet from the owner's collection."""
         pass
 
 
@@ -41,6 +45,10 @@ class Pet:
     def get_tasks(self) -> List['Task']:
         """Retrieve all tasks assigned to this pet."""
         pass
+    
+    def remove_task(self, task: 'Task') -> None:
+        """Remove a task from this pet's task list."""
+        pass
 
 
 @dataclass
@@ -52,6 +60,9 @@ class Task:
     priority: str
     scheduled_time: datetime
     task_type: str
+    pet: 'Pet'
+    completed: bool = False
+    completed_time: Optional[datetime] = None
     
     def is_complete(self) -> bool:
         """Check if the task has been completed."""
@@ -65,8 +76,9 @@ class Task:
 class Scheduler:
     """Manages and schedules tasks for pets."""
     
-    def __init__(self, constraints: dict = None):
-        """Initialize a Scheduler with optional constraints."""
+    def __init__(self, pets: List[Pet] = None, constraints: dict = None):
+        """Initialize a Scheduler with optional pets and constraints."""
+        self.pets = pets or []
         self.tasks: List[Task] = []
         self.constraints = constraints or {}
     
