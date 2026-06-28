@@ -44,14 +44,14 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+The scheduler script was run successfully and produced the following terminal output:
 
-```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+```text
+Today's Schedule
+================
+- 08:00 | Mochi | Morning walk | high priority
+- 14:00 | Luna | Play session | high priority
+- 18:00 | Mochi | Feed dinner | medium priority
 ```
 
 ## 🧪 Testing PawPal+
@@ -72,12 +72,43 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+Your **PawPal+ Scheduler** now includes several algorithmic features for intelligent task management:
 
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
+| Feature | Method(s) | Description |
+|---------|-----------|-------------|
+| **Chronological Sorting** | `Scheduler.sort_by_time()` | Sorts all tasks by their `scheduled_time` (earliest first). Uses Python's `sorted()` with a lambda key. Returns tasks in chronological order for display in the daily plan. |
+| **Priority-Based Sorting** | `Scheduler.sort_by_priority()` | Sorts tasks by priority level (high → medium → low) with ties broken by scheduled time. Creates a priority ranking dictionary and uses multi-key sorting. |
+| **Filter by Completion** | `Scheduler.filter_by_completion(completed: bool)` | Returns either completed or incomplete tasks. Uses list comprehension to check `task.is_complete()` status. Useful for showing "To-Do" vs "Done" lists. |
+| **Filter by Pet** | `Scheduler.filter_by_pet(pet_name: str)` | Returns all tasks assigned to a specific pet by name (case-insensitive). Useful for viewing one pet's schedule independently. |
+| **Overlap Detection** | `Scheduler.detect_conflicts()` | Identifies tasks for the **same pet** that have overlapping time intervals. Uses interval overlap formula: `task1_start < task2_end AND task2_start < task1_end`. Accounts for task duration. |
+| **Simultaneous Task Detection** | `Scheduler.detect_simultaneous_tasks()` | Identifies tasks scheduled at the **exact same time** (across all pets). Uses `itertools.combinations()` for clean pair iteration. Helps detect when owner attention is divided. |
+| **Lightweight Conflict Warnings** | `Scheduler.check_for_warnings()` | Returns a list of human-readable warning messages for both overlaps and simultaneous tasks. Non-blocking strategy—app continues running even when conflicts exist. |
+| **Recurring Tasks** | `Task.mark_done()` with `frequency` field | Tasks can be marked "daily" or "weekly". When marked complete, automatically creates a new instance for the next occurrence using `timedelta(days=1)` or `timedelta(days=7)`. One-time tasks return `None`. |
+
+### Example Usage
+
+```python
+# Create and populate scheduler
+scheduler = Scheduler(pets=[mochi, luna])
+
+# Sort and display
+chronological = scheduler.sort_by_time()
+print(f"Daily plan: {len(chronological)} tasks")
+
+# Get warnings
+warnings = scheduler.check_for_warnings()
+if warnings:
+    for warning in warnings:
+        print(warning)  # ⚠️ OVERLAP WARNING: ...
+
+# Filter tasks
+mochi_tasks = scheduler.filter_by_pet("Mochi")
+incomplete = scheduler.filter_by_completion(False)
+
+# Handle recurring tasks
+morning_walk = tasks[0]  # daily task
+new_instance = morning_walk.mark_done()  # creates tomorrow's walk
+```
 | Conflict handling | | e.g., overlapping time slots |
 | Recurring tasks | | e.g., daily vs. weekly |
 
@@ -92,3 +123,56 @@ Describe your app in numbered steps so a reader can follow along without watchin
 5. <!-- Add more steps as needed -->
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+
+
+
+
+Mermaid Liver Editor diagram code: 
+
+classDiagram
+    class Owner {
+        -name: str
+        -contact_info: str
+        +add_pet(pet: Pet)
+void
+        +get_all_pets()
+list[Pet]
+    }
+    
+    class Pet {
+        -name: str
+        -species: str
+        -age: int
+        -owner: Owner
+        +add_task(task: Task)
+void
+        +get_tasks()
+list[Task]
+    }
+    
+    class Task {
+        -name: str
+        -duration: float
+        -priority: str
+        -scheduled_time: datetime
+        -task_type: str
+        +is_complete()
+bool
+        +mark_done()
+void
+    }
+    
+    class Scheduler {
+        -tasks: list[Task]
+        -constraints: dict
+        +generate_schedule()
+list[Task]
+        +sort_by_priority()
+list[Task]
+        +detect_conflicts()
+list
+    }
+    
+    Owner "1" --> "*" Pet : owns
+    Pet "1" --> "*" Task : has
+    Scheduler --> "*" Task : manages
