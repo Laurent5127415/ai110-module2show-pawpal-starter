@@ -6,39 +6,45 @@
 
 - Briefly describe your initial UML design.
 
-My initial design has four classes. The Owner class holds information about the pet owner and links to their pets. The Pet class stores each pet's details and connects to that pet's list of care tasks. The Task class is a dataclass that holds all the details about a single care activity - its name, duration, priority, scheduled time, and type. Finally, the Scheduler class si responsible for taking all the tasks and organizing them into a logical daily plan, checking for conflicts and sorting by priority. 
+My initial UML design had four classes: `Owner`, `Pet`, `Task`, and `Scheduler`. `Owner` holds owner details and a list of pets. `Pet` stores pet details and a list of tasks. `Task` captures task metadata such as name, duration, priority, scheduled time, type, and completion state. `Scheduler` collects tasks from all pets and organizes them into a daily plan.
 
 - What classes did you include, and what responsibilities did you assign to each?
 
-A user should be able to: (1) enter their pet's name and type, (2) add tasks like feeding or walking with a time and priority level, and (3) see a daily plan showing all tasks in order.
+A user should be able to:
+1. enter owner and pet details,
+2. add pet care tasks with schedule, priority, and recurrence,
+3. view a daily plan sorted by time,
+4. receive warnings for conflicting tasks.
+
+`Owner` manages pets. `Pet` manages tasks. `Task` represents a single care action and stores its own completion state. `Scheduler` handles task collection, sorting, filtering, conflict detection, and warning generation.
 
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
 
-After asking the AI to review my skeleton, I made several changes. First, I added a pet attribute to the Task dataclass so that each task knows which pet it belongs to - without this, there was no way to answer 'whose task is this?" without searching every pet's list. Second, I added a completed: bool = false field to Task because the original skeleton had is_complete () and mark_done() methods but no actual attribute to store whether the task was done. Third, I added a pet(s) lists to the Scheduler class so it has context about all pets when building the daily plan, not jsut a flat list of disconnected task type values are restricted to a known set of options, which prevents typos. I chose not to implement TypeDict for the constraints dictionary since that is advanced Python, but I added comments explaining what keys it should contain. I also kept the owner field in Pet as required rather than optional, since every pet in this system must belong to an owener. 
+Yes, the design evolved. I added a `pet` reference inside `Task` so each task is explicitly associated with a pet. I also added `completed` and `frequency` fields to `Task` to support recurring tasks and completion tracking. In `Scheduler`, I added methods for sorting by time, filtering by completion or pet, and detecting both overlapping and simultaneous tasks. I chose to keep `Pet.owner` required so every pet is always tied to an owner in the system.
 
-STEP 2: List the Building Blocks
-Owner class
-    -Name: add_per()
-    -contact_info: get_all_pets()
-Pet class
-    -Name: add_task()
-    -Species(dogs, cat...): get_tasks()
-    -Age
-    -Owner
-Task class
-    -Name ("Morning walk"): Is_complete()
-    -Duration (in minutes): mark_done()
-    -priority (high/medium/low)
-    -scheduled_time
-    -Task_type (walk/feed/med..)
-scheduler class
-    -Tasks (a list): generate_schedule()
-    -Constraints: Sort_by_priority() / detect_conflicts()
+### Building blocks
 
-
+- `Owner` class
+  - `add_pet()`
+  - `get_all_pets()`
+- `Pet` class
+  - `add_task()`
+  - `get_tasks()`
+- `Task` class
+  - `is_complete()`
+  - `mark_done()`
+  - `frequency` field for recurring tasks
+- `Scheduler` class
+  - `generate_schedule()`
+  - `sort_by_time()`
+  - `filter_by_completion()`
+  - `filter_by_pet()`
+  - `detect_conflicts()`
+  - `detect_simultaneous_tasks()`
+  - `check_for_warnings()`
 
 ---
 
@@ -46,21 +52,17 @@ scheduler class
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers time, priority, completion state, and recurrence. Time and priority are the most important constraints: the schedule must be ordered chronologically, and higher-priority tasks should be easier to spot. Completion state ensures done tasks can be filtered out, while `frequency` supports repeated care like daily or weekly tasks.
+
+I chose these constraints because they reflect the core use case of the app: a task must occur at the right time, urgent care should be visible, and recurring tasks should not need manual re-entry.
 
 **b. Tradeoffs**
 
-The scheduler makes an important tradeoff between **simplicity and precision in conflict detection**:
+The scheduler makes a tradeoff between **simplicity and precision in conflict detection**:
 
-- **Tradeoff**: The `detect_simultaneous_tasks()` method flags only tasks with **exact same start times**, not overlapping durations. For example, a task from 08:00-08:30 and another from 08:15-08:45 for the *same pet* will be detected by `detect_conflicts()` (overlap detection), but two tasks at exactly 08:00 (one for Mochi, one for Luna) will be detected by `detect_simultaneous_tasks()`.
-
-- **Why reasonable**: This tradeoff allows the scheduler to:
-  1. Quickly identify critical conflicts (owner can't supervise two pets at the exact same time)
-  2. Still catch resource conflicts (same pet doing two things at once via `detect_conflicts()`)
-  3. Remain non-blocking—warnings are returned, not exceptions, so the app continues functioning
-  
-- **Trade-off detail**: The approach sacrifices 100% conflict detection (e.g., it won't flag tasks for different pets that partially overlap but don't start at the same time) for **usability**. In practice, the owner would want to notice that both pets need attention at 08:00, but might be okay with one task running 08:00-08:30 and another running 08:15-09:00 if they're for different pets. This keeps the UI from becoming overwhelmed with warnings.
+- **Tradeoff**: `detect_simultaneous_tasks()` flags only tasks with the exact same start time, not tasks that partially overlap with different start times.
+- **Why reasonable**: This keeps the warning system useful without overwhelming the user, while `detect_conflicts()` still catches same-pet overlaps.
+- **Trade-off detail**: The system focuses on the most important conflicts, such as double-booking the same pet or two tasks that start at the same time, instead of attempting exhaustive overlap analysis across all pets.
 
 ---
 
@@ -68,13 +70,19 @@ The scheduler makes an important tradeoff between **simplicity and precision in 
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used AI for design brainstorming, implementation guidance, debugging, and writing tests. Helpful prompts included asking for:
+- scheduler method implementations,
+- recurrence handling with `timedelta`,
+- conflict detection strategies,
+- Streamlit UI patterns for schedule display.
+
+These prompts helped break the project into concrete backend and UI work and allowed me to implement the core features faster.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+I did not accept every AI suggestion as-is. For example, I rejected a suggestion to use a complex generic constraint dictionary or `TypeDict` for scheduler rules because that would have added unnecessary complexity for the current scope.
+
+I verified suggestions by reviewing the logic manually, checking that it matched the app requirements, and running tests. For example, I confirmed recurrence behavior by marking a daily task complete and verifying that a new task was created for the next day.
 
 ---
 
@@ -82,13 +90,24 @@ The scheduler makes an important tradeoff between **simplicity and precision in 
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+I tested the scheduler's core behaviors:
+- chronological sorting of tasks,
+- recurrence creation after marking a task complete,
+- conflict detection for simultaneous tasks,
+- basic task completion handling.
+
+These tests were important because they cover the main app behaviors: ordered schedule generation, repeatable care, and conflict awareness.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+I am fairly confident in the current implementation. The core scheduler logic is covered and the app can build schedules and warn on conflicts.
+
+If I had more time, I would add tests for:
+- partial overlaps across different pets,
+- multiple simultaneous tasks,
+- recurrence edge cases at midnight or month boundaries,
+- invalid time input,
+- Streamlit state persistence across sessions.
 
 ---
 
@@ -96,12 +115,12 @@ The scheduler makes an important tradeoff between **simplicity and precision in 
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The clean separation between backend scheduler logic and the Streamlit UI went well. The scheduler is reusable and the UI simply displays the results.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+If I had another iteration, I would improve conflict detection to handle more overlap cases consistently and add richer task editing and persistence in the UI.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+I learned that AI is a strong implementation partner, but final architecture and tradeoff decisions must remain with the developer. Effective AI collaboration means verifying suggestions with tests and choosing the simplest design that meets the needs.

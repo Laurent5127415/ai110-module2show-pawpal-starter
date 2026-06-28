@@ -130,13 +130,92 @@ new_instance = morning_walk.mark_done()  # creates tomorrow's walk
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+### Main UI features
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+- Add a pet with name, species, and age.
+- Select a pet and create a care task with time, duration, priority, and task type.
+- View the selected pet's task table with completion status and recurrence details.
+- Generate the day's schedule using `Scheduler.sort_by_time()`.
+- See conflict warnings from `Scheduler.check_for_warnings()` for overlapping or exact-time tasks.
+
+### Example workflow
+
+1. Open the app and confirm the owner's name and contact info.
+2. Add a new pet, such as Mochi the dog.
+3. Select Mochi and add a task like Morning walk at 08:00.
+4. Add another task for the same or a different pet.
+5. Click "Generate Schedule" to show your sorted plan and any warnings.
+
+### Key scheduler behaviors shown
+
+- **Sorting by time**: The schedule is presented chronologically.
+- **Conflict warnings**: Warnings appear for exact-time collisions and overlapping same-pet tasks.
+- **Recurring tasks**: Daily tasks can generate the next occurrence automatically when completed.
+- **Task status**: The app shows pending/completed state and recurrence frequency in task tables.
+
+### Sample CLI output
+
+```text
+======================================================================
+TEST 1: All Tasks (Initial)
+======================================================================
+○ | 08:00 | Mochi    | Morning walk         | high     | [daily]
+○ | 08:00 | Luna     | Play session         | high     | 
+○ | 10:30 | Luna     | Groom Luna           | low      | 
+○ | 12:00 | Mochi    | Lunch                | high     | [weekly]
+○ | 18:00 | Luna     | Feed dinner          | medium   | [daily]
+
+======================================================================
+TEST 2: Conflict & Simultaneous Task Detection
+======================================================================
+⚠️  SIMULTANEOUS WARNING: 'Morning walk' (for Mochi) and 'Play session' (for Luna) are both scheduled at 08:00
+
+======================================================================
+TEST 3: Complete Daily Task → New Instance Created
+======================================================================
+Before: Morning walk @ 2026-06-25 08:00
+✓ Marked as complete!
+After: New instance created @ 2026-06-26 08:00
+
+All tasks after completion:
+✓ | 08:00 | Mochi    | Morning walk         | [daily]
+○ | 08:00 | Luna     | Play session         | 
+○ | 10:30 | Luna     | Groom Luna           | 
+○ | 12:00 | Mochi    | Lunch                | [weekly]
+○ | 18:00 | Luna     | Feed dinner          | [daily]
+○ | 08:00 | Mochi    | Morning walk         | [daily]
+
+======================================================================
+TEST 4: Complete Weekly Task → New Instance Created
+======================================================================
+Before: Lunch @ 2026-06-25 12:00
+✓ Marked as complete!
+After: New instance created @ 2026-07-02 12:00 (+7 days)
+
+All tasks after completion:
+✓ | 08:00 | Mochi    | Morning walk         | [daily]
+○ | 08:00 | Luna     | Play session         | 
+○ | 10:30 | Luna     | Groom Luna           | 
+✓ | 12:00 | Mochi    | Lunch                | [weekly]
+○ | 18:00 | Luna     | Feed dinner          | [daily]
+○ | 08:00 | Mochi    | Morning walk         | [daily]
+○ | 12:00 | Mochi    | Lunch                | [weekly]
+
+======================================================================
+TEST 5: Incomplete Tasks Only
+======================================================================
+○ | 08:00 | Luna     | Play session         | 
+○ | 10:30 | Luna     | Groom Luna           | 
+○ | 18:00 | Luna     | Feed dinner          | [daily]
+○ | 08:00 | Mochi    | Morning walk         | [daily]
+○ | 12:00 | Mochi    | Lunch                | [weekly]
+
+======================================================================
+TEST 6: Completed Tasks Only
+======================================================================
+✓ | 08:00 | Mochi    | Morning walk         | [daily]
+✓ | 12:00 | Mochi    | Lunch                | [weekly]
+```
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
 

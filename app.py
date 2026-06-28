@@ -125,9 +125,18 @@ if st.session_state.current_pet:
     tasks = current_pet.get_tasks()
     if tasks:
         st.markdown(f"**Tasks for {current_pet.name}:**")
-        for task in tasks:
-            status = "✓" if task.is_complete() else "○"
-            st.write(f"{status} **{task.name}** ({task.duration} min) — {task.priority} priority @ {task.scheduled_time.strftime('%H:%M')}")
+        task_rows = [
+            {
+                "Name": task.name,
+                "Time": task.scheduled_time.strftime("%H:%M"),
+                "Duration": f"{int(task.duration)} min",
+                "Priority": task.priority,
+                "Status": "Done" if task.is_complete() else "Pending",
+                "Frequency": task.frequency,
+            }
+            for task in tasks
+        ]
+        st.table(task_rows)
     else:
         st.info(f"No tasks yet for {current_pet.name}. Add one above!")
 else:
@@ -138,18 +147,31 @@ st.divider()
 # ===== SCHEDULER SECTION =====
 st.subheader("📅 Generate Schedule")
 if owner.get_all_pets():
-    if st.button("Generate schedule", key="generate_schedule_button"):
-        # Create scheduler with all pets
-        scheduler = Scheduler(pets=owner.get_all_pets())
-        schedule = scheduler.generate_schedule()
-        
-        if schedule:
-            st.success("✅ Schedule generated!")
-            st.markdown("**Daily Schedule:**")
-            sorted_tasks = sorted(schedule, key=lambda t: t.scheduled_time)
-            for task in sorted_tasks:
-                st.write(f"- **{task.scheduled_time.strftime('%H:%M')}** - {task.name} ({task.duration} min) for {task.pet.name}")
-        else:
-            st.info("No tasks scheduled.")
+    scheduler = Scheduler(pets=owner.get_all_pets())
+    schedule = scheduler.sort_by_time()
+    warnings = scheduler.check_for_warnings()
+
+    if warnings:
+        st.warning("The scheduler found one or more issues in your current plan:")
+        for warning in warnings:
+            st.warning(warning)
+
+    if schedule:
+        st.success("✅ Schedule ready. Review your sorted daily plan below.")
+        st.markdown("**Daily Schedule:**")
+        schedule_rows = [
+            {
+                "Time": task.scheduled_time.strftime("%H:%M"),
+                "Pet": task.pet.name,
+                "Task": task.name,
+                "Duration": f"{int(task.duration)} min",
+                "Priority": task.priority,
+                "Status": "Done" if task.is_complete() else "Pending",
+            }
+            for task in schedule
+        ]
+        st.table(schedule_rows)
+    else:
+        st.info("No tasks scheduled. Add a pet and tasks to build a plan.")
 else:
     st.warning("Add a pet and tasks before generating a schedule.")
