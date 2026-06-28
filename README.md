@@ -56,19 +56,35 @@ Today's Schedule
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite with:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+This project includes tests for:
 
+- task sorting by chronological order,
+- recurring task creation when a daily task is completed,
+- duplicate-time conflict detection for tasks scheduled at the same time,
+- basic pet/task object behavior and scheduler filtering.
+
+Successful test output:
+
+```text
+============================= test session starts ==============================
+platform darwin -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/laurentshumbusha/ai110-module2show-pawpal-starter
+plugins: anyio-4.14.0
+collected 7 items                                                               
+
+tests/test_pawpal.py .....                                               [ 71%]
+tests/test_pawpal_system.py ..                                           [100%]
+
+============================== 7 passed in 0.02s ===============================
 ```
-# Paste your pytest output here
-```
+
+**Confidence Level:** ★★★★☆
 
 ## 📐 Smarter Scheduling
 
