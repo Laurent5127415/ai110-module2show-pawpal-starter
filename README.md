@@ -99,7 +99,18 @@ Your **PawPal+ Scheduler** now includes several algorithmic features for intelli
 | **Overlap Detection** | `Scheduler.detect_conflicts()` | Identifies tasks for the **same pet** that have overlapping time intervals. Uses interval overlap formula: `task1_start < task2_end AND task2_start < task1_end`. Accounts for task duration. |
 | **Simultaneous Task Detection** | `Scheduler.detect_simultaneous_tasks()` | Identifies tasks scheduled at the **exact same time** (across all pets). Uses `itertools.combinations()` for clean pair iteration. Helps detect when owner attention is divided. |
 | **Lightweight Conflict Warnings** | `Scheduler.check_for_warnings()` | Returns a list of human-readable warning messages for both overlaps and simultaneous tasks. Non-blocking strategy—app continues running even when conflicts exist. |
+| **Next Available Slot** | `Scheduler.find_next_available_time_slot(duration_minutes, after=None)` | Finds the earliest available start time after a given datetime where a new task can fit without overlapping existing incomplete tasks. Useful for suggesting open scheduling windows. |
 | **Recurring Tasks** | `Task.mark_done()` with `frequency` field | Tasks can be marked "daily" or "weekly". When marked complete, automatically creates a new instance for the next occurrence using `timedelta(days=1)` or `timedelta(days=7)`. One-time tasks return `None`. |
+
+## Persistence Workflow
+
+The app now persists owner, pet, and task state to `data.json` between runs. The following files were modified for persistence:
+
+- `pawpal_system.py` — added `save_to_json` and `load_from_json` methods, plus object serialization/deserialization helpers for `Owner`, `Pet`, and `Task`.
+- `app.py` — loads saved state at startup and saves state after new pets or tasks are added.
+- `tests/test_persistence.py` — verifies JSON save/load and the new next-available-slot feature.
+
+The persistence implementation uses a custom dictionary conversion pattern rather than an external library like `marshmallow`. Each class converts to a JSON-safe dict using `to_dict()`, and `from_dict()` rebuilds objects with proper `datetime` parsing.
 
 ### Example Usage
 
@@ -125,6 +136,33 @@ incomplete = scheduler.filter_by_completion(False)
 morning_walk = tasks[0]  # daily task
 new_instance = morning_walk.mark_done()  # creates tomorrow's walk
 ```
+
+## CLI Formatting Enhancements
+
+The CLI runner now uses `tabulate` to print structured tables and `colorama` for color-coded status indicators. Tasks are shown with emojis based on type, such as:
+
+- `🐾` for walks
+- `🍽️` for feeding
+- `💊` for medical tasks
+- `✂️` for grooming
+- `🎾` for play
+
+Priority values are printed in color:
+
+- red for High
+- cyan for Medium
+- blue for Low
+
+Output is generated in `main.py` using:
+
+- `tabulate` for pretty table formatting
+- `colorama` for ANSI color styling
+
+The status column also includes friendly symbols and text:
+
+- `✓ Completed`
+- `○ Pending`
+
 | Conflict handling | | e.g., overlapping time slots |
 | Recurring tasks | | e.g., daily vs. weekly |
 
@@ -135,8 +173,23 @@ new_instance = morning_walk.mark_done()  # creates tomorrow's walk
 - Add a pet with name, species, and age.
 - Select a pet and create a care task with time, duration, priority, and task type.
 - View the selected pet's task table with completion status and recurrence details.
-- Generate the day's schedule using `Scheduler.sort_by_time()`.
+- Generate the day's schedule using priority-based scheduling with `Scheduler.sort_by_priority()`.
 - See conflict warnings from `Scheduler.check_for_warnings()` for overlapping or exact-time tasks.
+
+### CLI Output Example
+
+When the scheduler orders tasks by priority first, then by time, the output looks like:
+
+```text
+Today's Schedule
+================
+- 08:00 | Mochi | Morning walk | high priority
+- 09:00 | Luna | Medication | high priority
+- 10:30 | Mochi | Grooming | medium priority
+- 12:00 | Luna | Feed dinner | low priority
+```
+
+Tasks with the same priority are still sorted chronologically, and high-priority tasks appear before medium and low tasks.
 
 ### Example workflow
 

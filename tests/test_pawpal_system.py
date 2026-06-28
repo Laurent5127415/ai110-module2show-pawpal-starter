@@ -64,3 +64,41 @@ def test_scheduler_collects_tasks_and_detects_conflicts():
     assert len(conflicts) == 1
     assert conflicts[0][0] == task_one
     assert conflicts[0][1] == task_two
+
+
+def test_sort_by_priority_orders_high_before_low_and_time_within_priority():
+    owner = Owner("Jordan", "jordan@example.com")
+    pet = Pet("Mochi", "dog", 3, owner)
+
+    task_high_early = Task(
+        name="Morning walk",
+        duration=30,
+        priority="high",
+        scheduled_time=datetime(2026, 6, 25, 8, 0),
+        task_type="walk",
+        pet=pet,
+    )
+    task_high_late = Task(
+        name="Vet visit",
+        duration=30,
+        priority="high",
+        scheduled_time=datetime(2026, 6, 25, 10, 0),
+        task_type="medical",
+        pet=pet,
+    )
+    task_low = Task(
+        name="Grooming",
+        duration=45,
+        priority="low",
+        scheduled_time=datetime(2026, 6, 25, 9, 0),
+        task_type="grooming",
+        pet=pet,
+    )
+    pet.add_task(task_high_late)
+    pet.add_task(task_low)
+    pet.add_task(task_high_early)
+
+    scheduler = Scheduler([pet])
+    ordered = scheduler.sort_by_priority()
+
+    assert ordered == [task_high_early, task_high_late, task_low]

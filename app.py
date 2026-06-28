@@ -2,6 +2,8 @@ import streamlit as st
 from datetime import datetime, date
 from pawpal_system import Owner, Pet, Task, Scheduler
 
+DATA_PATH = "data.json"
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
@@ -40,12 +42,23 @@ At minimum, your system should:
 
 st.divider()
 
-# Initialize session state for owner (if not already created)
-if "owner" not in st.session_state:
-    st.session_state.owner = Owner(name="Jordan", contact_info="555-1234-5678")
+# Initialize session state for owner and scheduler (load saved data).
+if "scheduler" not in st.session_state:
+    st.session_state.scheduler = Scheduler.load_from_json(DATA_PATH)
+    if st.session_state.scheduler.pets:
+        st.session_state.owner = st.session_state.scheduler.pets[0].owner
+    else:
+        st.session_state.owner = Owner(name="Jordan", contact_info="555-1234-5678")
+else:
+    if "owner" not in st.session_state:
+        st.session_state.owner = st.session_state.scheduler.pets[0].owner if st.session_state.scheduler.pets else Owner(name="Jordan", contact_info="555-1234-5678")
 
 if "current_pet" not in st.session_state:
     st.session_state.current_pet = None
+
+# Helper to persist state
+def persist_state():
+    st.session_state.scheduler.save_to_json(DATA_PATH)
 
 # ===== OWNER SECTION =====
 st.subheader("👤 Pet Owner")
@@ -68,6 +81,8 @@ if st.button("Add Pet", key="add_pet_button"):
     # Create a new Pet object and add it to the owner
     new_pet = Pet(name=pet_name, species=species, age=pet_age, owner=owner)
     owner.add_pet(new_pet)
+    st.session_state.scheduler.pets = owner.get_all_pets()
+    persist_state()
     st.session_state.current_pet = new_pet
     st.success(f"✅ Added {pet_name} the {species}!")
     st.rerun()
@@ -116,6 +131,8 @@ if st.session_state.current_pet:
                 pet=current_pet
             )
             current_pet.add_task(new_task)
+            st.session_state.scheduler.pets = owner.get_all_pets()
+            persist_state()
             st.success(f"✅ Added '{task_title}' for {current_pet.name}!")
             st.rerun()
         else:
@@ -148,7 +165,7 @@ st.divider()
 st.subheader("📅 Generate Schedule")
 if owner.get_all_pets():
     scheduler = Scheduler(pets=owner.get_all_pets())
-    schedule = scheduler.sort_by_time()
+    schedule = scheduler.sort_by_priority()
     warnings = scheduler.check_for_warnings()
 
     if warnings:
@@ -173,5 +190,22 @@ if owner.get_all_pets():
         st.table(schedule_rows)
     else:
         st.info("No tasks scheduled. Add a pet and tasks to build a plan.")
+
+    st.divider()
+    st.subheader("🕒 Find Next Available Slot")
+    slot_duration = st.number_input(
+        "Desired task duration (minutes)",
+        min_value=1,
+        max_value=240,
+        value=30,
+        key="slot_duration_input",
+    )
+
+    if st.button("Find next free slot", key="find_slot_button"):
+        next_slot = scheduler.find_next_available_time_slot(slot_duration)
+        if next_slot:
+            st.success(f"Next available slot: {next_slot.strftime('%Y-%m-%d %H:%M')}")
+        else:
+            st.error("Could not find an available slot for that duration.")
 else:
     st.warning("Add a pet and tasks before generating a schedule.")

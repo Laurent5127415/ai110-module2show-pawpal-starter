@@ -1,3 +1,5 @@
+import json
+import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import combinations
@@ -27,6 +29,23 @@ class Owner:
         if pet in self.pets:
             self.pets.remove(pet)
 
+    def to_dict(self) -> dict:
+        """Serialize this owner and its nested pets to a dictionary."""
+        return {
+            "name": self.name,
+            "contact_info": self.contact_info,
+            "pets": [pet.to_dict() for pet in self.pets],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Owner':
+        """Deserialize an owner and nested pets from a dictionary."""
+        owner = cls(name=data["name"], contact_info=data.get("contact_info", ""))
+        for pet_data in data.get("pets", []):
+            pet = Pet.from_dict(pet_data, owner)
+            owner.add_pet(pet)
+        return owner
+
 
 @dataclass
 class Pet:
@@ -54,6 +73,29 @@ class Pet:
         """Remove a task from this pet's task list."""
         if task in self.tasks:
             self.tasks.remove(task)
+
+    def to_dict(self) -> dict:
+        """Serialize this pet and its tasks to a dictionary."""
+        return {
+            "name": self.name,
+            "species": self.species,
+            "age": self.age,
+            "tasks": [task.to_dict() for task in self.tasks],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, owner: 'Owner') -> 'Pet':
+        """Deserialize a pet and its tasks from a dictionary."""
+        pet = cls(
+            name=data["name"],
+            species=data.get("species", ""),
+            age=data.get("age", 0),
+            owner=owner,
+        )
+        for task_data in data.get("tasks", []):
+            task = Task.from_dict(task_data, pet)
+            pet.add_task(task)
+        return pet
 
 
 @dataclass
@@ -120,6 +162,35 @@ class Task:
             return new_task
         
         return None
+
+    def to_dict(self) -> dict:
+        """Serialize this task to a dictionary."""
+        return {
+            "name": self.name,
+            "duration": self.duration,
+            "priority": self.priority,
+            "scheduled_time": self.scheduled_time.isoformat(),
+            "task_type": self.task_type,
+            "completed": self.completed,
+            "completed_time": self.completed_time.isoformat() if self.completed_time else None,
+            "frequency": self.frequency,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, pet: 'Pet') -> 'Task':
+        """Deserialize a task from a dictionary."""
+        completed_time = data.get("completed_time")
+        return cls(
+            name=data["name"],
+            duration=float(data.get("duration", 0.0)),
+            priority=data.get("priority", "low"),
+            scheduled_time=datetime.fromisoformat(data["scheduled_time"]),
+            task_type=data.get("task_type", "other"),
+            pet=pet,
+            completed=data.get("completed", False),
+            completed_time=datetime.fromisoformat(completed_time) if completed_time else None,
+            frequency=data.get("frequency", "once"),
+        )
 
 
 class Scheduler:
@@ -286,3 +357,68 @@ class Scheduler:
             warnings.append(warning)
         
         return warnings
+
+    def find_next_available_time_slot(
+        self, duration_minutes: int, after: Optional[datetime] = None
+    ) -> Optional[datetime]:
+        """Find the next free time slot for a new task.
+
+        Scans existing incomplete tasks and returns the earliest start time after `after`
+        where a new task of `duration_minutes` can fit without overlapping.
+        """
+        if duration_minutes <= 0:
+            return None
+
+        search_start = after or datetime.now()
+        tasks = sorted(
+            [task for task in self.generate_schedule() if not task.completed],
+            key=lambda task: task.scheduled_time,
+        )
+        candidate = search_start
+
+        for task in tasks:
+            task_start = task.scheduled_time
+            task_end = task_start + timedelta(minutes=task.duration)
+            candidate_end = candidate + timedelta(minutes=duration_minutes)
+
+            if candidate_end <= task_start:
+                return candidate
+
+            if task_start <= candidate < task_end:
+                candidate = task_end
+            elif candidate < task_start < candidate_end:
+                candidate = task_end
+
+        return candidate
+
+    def save_to_json(self, path: str = "data.json") -> None:
+        """Serialize the current owner/pet/task state to a JSON file."""
+        owners_by_name = {}
+        for pet in self.pets:
+            owner = pet.owner
+            if owner.name not in owners_by_name:
+                owners_by_name[owner.name] = owner
+
+        data = {
+            "owners": [owner.to_dict() for owner in owners_by_name.values()]
+        }
+
+        with open(path, "w", encoding="utf-8") as json_file:
+            json.dump(data, json_file, indent=2)
+
+    @classmethod
+    def load_from_json(cls, path: str = "data.json") -> 'Scheduler':
+        """Load scheduler state from a JSON file."""
+        if not os.path.exists(path):
+            return cls()
+
+        with open(path, "r", encoding="utf-8") as json_file:
+            data = json.load(json_file)
+
+        owners = [Owner.from_dict(owner_data) for owner_data in data.get("owners", [])]
+        pets: List[Pet] = []
+        for owner in owners:
+            pets.extend(owner.get_all_pets())
+
+        scheduler = cls(pets=pets)
+        return scheduler
